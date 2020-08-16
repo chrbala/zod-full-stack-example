@@ -1,0 +1,15 @@
+schema: packages/graphql-schema/src/index.ts
+generates:
+  packages/resolver-typedefs/src/__generated__/types.tsx:
+    plugins:
+      - typescript
+      - typescript-resolvers
+  packages/react/src/__generated__/types.tsx:
+    plugins:
+      - typescript
+      - typescript-operations
+hooks:
+  afterAllFileWrite:
+    - prettier --write
+config:
+  constEnums: true

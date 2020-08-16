@@ -1,0 +1,37 @@
+{
+  "name": "mono",
+  "private": true,
+  "devDependencies": {
+    "@graphql-codegen/cli": "^1.16.3",
+    "@graphql-codegen/typescript": "^1.16.3",
+    "@graphql-codegen/typescript-operations": "^1.17.0",
+    "@graphql-codegen/typescript-resolvers": "^1.17.0",
+    "@types/react": "^16.9.43",
+    "@types/react-dom": "^16.9.8",
+    "graphql": "^14.0.0",
+    "lerna": "^3.15.0",
+    "prettier": "^2.0.5",
+    "react": "^16.13.1",
+    "react-dom": "^16.13.1",
+    "tsdx": "^0.13.2",
+    "typescript": "^3.9.7",
+    "zod": "^1.11.0-alpha.6"
+  },
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "lerna": "lerna",
+    "dev": "lerna run start --stream --parallel",
+    "test": "lerna run test --",
+    "build": "lerna run build",
+    "typecheck": "tsc --noEmit",
+    "prepublish": "lerna run prepublish",
+    "clean": "git clean -fXd",
+    "codegen": "graphql-codegen",
+    "postinstall": "npm run codegen",
+    "lint": "tsdx lint packages",
+    "format": "npm run lint --fix",
+    "validate": "npm test && npm run typecheck && npm run format"
+  }
+}

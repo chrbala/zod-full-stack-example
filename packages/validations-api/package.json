@@ -1,0 +1,27 @@
+{
+  "name": "@mono/validations-api",
+  "version": "0.0.0",
+  "description": "API validations",
+  "author": "Chris Bala",
+  "scripts": {
+    "test": "tsdx test",
+    "lint": "tsdx lint"
+  },
+  "main": "src/index.ts",
+  "module": "src/index.ts",
+  "files": [
+    "README.md",
+    "dist"
+  ],
+  "peerDependencies": {
+    "zod": "^1.11.0-alpha.6"
+  },
+  "dependencies": {
+    "@mono/utils-server": "^0.0.0",
+    "@mono/validations-common": "^0.0.0",
+    "tslib": "^2.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

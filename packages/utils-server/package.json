@@ -1,0 +1,27 @@
+{
+  "name": "@mono/utils-server",
+  "version": "0.0.0",
+  "description": "Server-only utilities",
+  "author": "Chris Bala",
+  "scripts": {
+    "test": "tsdx test",
+    "lint": "tsdx lint"
+  },
+  "main": "src/index.ts",
+  "module": "src/index.ts",
+  "files": [
+    "README.md",
+    "dist"
+  ],
+  "peerDependencies": {
+    "zod": "^1.11.0-alpha.6"
+  },
+  "dependencies": {
+    "@mono/utils-common": "^0.0.0",
+    "hashids": "^2.2.1",
+    "tslib": "^2.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

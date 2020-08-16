@@ -1,0 +1,9 @@
+{
+  "extends": "./tsconfig.build.json",
+  "include": ["packages", "types", "scripts"],
+  "compilerOptions": {
+    "allowJs": false,
+    "baseUrl": ".",
+    "typeRoots": ["@types", "./node_modules/@types", "./types"]
+  }
+}

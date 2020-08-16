@@ -1,0 +1,38 @@
+{
+  "name": "@mono/graphql-schema",
+  "version": "0.0.0",
+  "description": "Official Schema library for @mono",
+  "author": "Chris Bala",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/chrbala/zod-full-stack-example.git",
+    "directory": "packages/graphql-schema"
+  },
+  "scripts": {
+    "test": "tsdx test",
+    "lint": "tsdx lint"
+  },
+  "main": "src/index.ts",
+  "module": "src/index.ts",
+  "files": [
+    "README.md",
+    "dist"
+  ],
+  "peerDependencies": {
+    "graphql": "^14.0.0",
+    "react": "^16.8.0",
+    "react-dom": "^16.8.0"
+  },
+  "dependencies": {
+    "graphql-tag": "^2.10.4",
+    "graphql-tools": "^6.0.14",
+    "tslib": "^2.0.0"
+  },
+  "devDependencies": {
+    "esm": "^3.2.25",
+    "ts-node": "^8.10.2"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

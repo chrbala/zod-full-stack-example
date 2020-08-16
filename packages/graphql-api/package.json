@@ -1,0 +1,45 @@
+{
+  "name": "@mono/graphql-api",
+  "version": "0.0.0",
+  "description": "Official API library for @mono",
+  "author": "Chris Bala",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/chrbala/zod-full-stack-example.git",
+    "directory": "packages/graphql-api"
+  },
+  "scripts": {
+    "test": "tsdx test",
+    "lint": "tsdx lint",
+    "serve": "node -r esm -r ts-node/register src/index.ts",
+    "start": "nodemon --exec 'npm run serve' ./src"
+  },
+  "main": "src/index.ts",
+  "module": "src/index.ts",
+  "files": [
+    "README.md",
+    "dist"
+  ],
+  "peerDependencies": {
+    "react": "^16.8.0",
+    "react-dom": "^16.8.0"
+  },
+  "dependencies": {
+    "@mono/graphql-schema": "^0.0.0",
+    "@mono/resolver-typedefs": "^0.0.0",
+    "@mono/validations-api": "^0.0.0",
+    "@mono/validations-common": "^0.0.0",
+    "apollo-server": "^2.16.0",
+    "esm": "^3.2.25",
+    "graphql": "^14.0.0",
+    "tslib": "^2.0.0",
+    "ts-node": "^8.10.2",
+    "zod": "^1.11.0-alpha.6"
+  },
+  "devDependencies": {
+    "nodemon": "^2.0.4"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}
