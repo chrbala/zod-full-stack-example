@@ -1,148 +1,167 @@
-import * as z from 'zod';
-import * as common from '@mono/validations-common';
-import { fromGlobalId, Table, toGlobalId } from '@mono/utils-server';
+import {
+  fromGlobalId,
+  Table,
+  toGlobalId,
+  DeserializedGlobalId,
+} from '@mono/utils-server';
 
-export const serializedID = common.ID.refine(
-  id => !(fromGlobalId(id) instanceof Error),
-  'invalid'
+import * as C from 'io-ts/Codec';
+import * as D from 'io-ts/Decoder';
+import * as E from 'io-ts/Encoder';
+import { pipe } from 'fp-ts/function';
+
+import { PlantLifecycle } from '@mono/resolver-typedefs';
+
+export const name = D.string;
+export const lifespan = D.number;
+export const weight = D.number;
+
+export const lifecycle = D.union(
+  D.literal(PlantLifecycle.Deciduous),
+  D.literal(PlantLifecycle.Evergreen),
+  D.literal(PlantLifecycle.SemiDeciduous)
 );
 
-export const globalIDType = z.object({
-  table: z.union([z.literal(Table.Plant), z.literal(Table.Animal)]),
-  id: z.number(),
-});
-
-const globalID = z.transformer(serializedID, globalIDType, id => {
-  const res = fromGlobalId(id);
-  if (res instanceof Error) throw res;
-
-  return res;
-});
-
-export const animalID = globalID.refine(
-  ({ table }) => table === Table.Animal,
-  'not_animal'
+const idD = pipe(
+  D.string,
+  D.parse(id => {
+    const res = fromGlobalId(id);
+    return res instanceof Error ? D.failure(res, res.message) : D.success(res);
+  })
 );
 
-export const plantID = globalID.refine(
-  ({ table }) => table === Table.Plant,
-  'not_plant'
+const idE: E.Encoder<string, DeserializedGlobalId> = {
+  encode: toGlobalId,
+};
+
+export const id = C.make(idD, idE);
+
+const foreignKeyD = D.parse<D.TypeOf<typeof idD>, string>(id =>
+  D.success(toGlobalId(id))
 );
 
-export const livingThingID = z.union([animalID, plantID]);
+const typedId = (...table: Array<Table>) =>
+  pipe(
+    id,
+    D.parse(id =>
+      table.includes(id.table) ? D.success(id) : D.failure(id, 'invalid_table')
+    )
+  );
 
-export const LivingThingCommon = z.object({
-  name: common.name,
-  lifespan: z.number(),
-  eatenBy: z.array(animalID),
-  weight: z.number(),
+const animalId = typedId(Table.Animal);
+const livingThingId = typedId(Table.Animal, Table.Plant);
+
+const LivingThingCommonD = D.type({
+  name,
+  lifespan,
+  weight,
 });
 
-export const AnimalInput = LivingThingCommon.extend({
-  diet: z.array(livingThingID),
+const AnimalInput = pipe(
+  LivingThingCommonD,
+  D.intersect(
+    D.type({
+      diet: D.array(pipe(livingThingId, foreignKeyD)),
+      eatenBy: D.array(pipe(animalId, foreignKeyD)),
+    })
+  )
+);
+
+export const BackendAnimal = LivingThingCommonD;
+
+const PlantInput = pipe(
+  LivingThingCommonD,
+  D.intersect(
+    D.type({ eatenBy: D.array(pipe(animalId, foreignKeyD)), lifecycle })
+  )
+);
+
+export const BackendPlant = pipe(
+  LivingThingCommonD,
+  D.intersect(D.type({ lifecycle }))
+);
+
+export const LivingThingPatchCommon = D.type({
+  name,
+  lifespan,
+  eatenBy: D.array(pipe(animalId, foreignKeyD)),
+  weight,
 });
 
-export const BackendAnimal = AnimalInput.omit({
-  eatenBy: true,
-  diet: true,
-});
+export const AnimalPatchInput = pipe(
+  LivingThingPatchCommon,
+  D.intersect(D.type({ diet: D.array(pipe(livingThingId, foreignKeyD)) }))
+);
 
-export const PlantInput = LivingThingCommon.extend({
-  lifecycle: common.lifecycle,
-});
+export const PlantPatchInput = pipe(
+  LivingThingPatchCommon,
+  D.intersect(D.type({ lifecycle }))
+);
 
-export const BackendPlant = PlantInput.omit({
-  eatenBy: true,
-  diet: true,
-});
-
-export const LivingThingPatchCommon = z.object({
-  name: common.name,
-  lifespan: z.number(),
-  eatenBy: z.array(animalID),
-  weight: z.number(),
-});
-
-export const AnimalPatchInput = LivingThingCommon.extend({
-  diet: z.array(livingThingID),
-});
-
-export const PlantPatchInput = LivingThingCommon.extend({
-  lifecycle: common.lifecycle,
-});
-
-export const LivingThingPatchInput = z.object({
+export const LivingThingPatchInput = D.type({
   animal: AnimalInput,
   plant: PlantInput,
 });
 
-export const UpdateLivingThingInput = z.object({
-  id: livingThingID,
+export const UpdateLivingThingInput = D.type({
+  id: livingThingId,
   patch: LivingThingPatchInput,
 });
 
-export const UpdateLivingThingArgs = z.object({
+export const UpdateLivingThingArgs = D.type({
   input: UpdateLivingThingInput,
 });
 
-export const DeleteLivingThingInput = z.object({
-  id: livingThingID,
+export const DeleteLivingThingInput = D.type({
+  id: livingThingId,
 });
 
-export const DeleteLivingThingArgs = z.object({
+export const DeleteLivingThingArgs = D.type({
   input: DeleteLivingThingInput,
 });
 
-export const NodeArgs = z.object({
-  id: globalID,
+export const NodeArgs = D.type({
+  id,
 });
 
-export const AllLivingThingsInput = z.object({
-  page: z.number(),
+export const AllLivingThingsInput = D.type({
+  page: D.number,
 });
 
-export const AllLivingThingsArgs = z.object({
+export const AllLivingThingsArgs = D.type({
   input: AllLivingThingsInput,
 });
 
-export const LivingThingArgs = z.object({
-  id: livingThingID,
+export const LivingThingArgs = D.type({
+  id: livingThingId,
 });
 
-const throws = () => {
-  throw new Error('invalid');
-};
+export const LivingThingInput = pipe(
+  D.partial({
+    animal: AnimalInput,
+    plant: PlantInput,
+  }),
+  D.parse(union => {
+    const { plant, animal } = union;
+    if (Object.keys(union).length !== 1)
+      return D.failure(union, 'multiple_values');
 
-export const LivingThingInput = z.transformer(
-  z
-    .object({
-      animal: AnimalInput.optional(),
-      plant: PlantInput.optional(),
-    })
-    .refine(
-      ({ plant, animal }) => [plant, animal].filter(Boolean).length === 1,
-      'invalid_count'
-    ),
-  z.union([
-    PlantInput.extend({
-      __typename: z.literal('Plant'),
-    }),
-    AnimalInput.extend({
-      __typename: z.literal('Animal'),
-    }),
-  ]),
-  ({ plant, animal }) =>
-    plant
-      ? { __typename: 'Plant' as 'Plant', ...plant }
+    const val = plant
+      ? { __typename: 'Plant' as const, ...plant }
       : animal
-      ? { __typename: 'Animal' as 'Animal', ...animal }
-      : throws()
+      ? { __typename: 'Animal' as const, ...animal }
+      : null;
+
+    if (!val) return D.failure(union, 'no_value');
+
+    return D.success(val);
+  })
 );
 
-export const AddLivingThingInput = z.object({
+export const AddLivingThingInput = D.type({
   livingThing: LivingThingInput,
 });
 
-export const AddLivingThingArgs = z.object({
+export const AddLivingThingArgs = D.type({
   input: AddLivingThingInput,
 });

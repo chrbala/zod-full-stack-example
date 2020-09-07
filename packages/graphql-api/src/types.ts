@@ -1,13 +1,13 @@
 import { BackendPlant, BackendAnimal } from '@mono/validations-api';
-import * as z from 'zod';
+import { TypeOf } from 'io-ts/Decoder';
 
 export type Context = {
   plant: {
     get: (id: number) => Promise<any>;
-    create: (value: z.TypeOf<typeof BackendPlant>) => Promise<number>;
+    create: (value: TypeOf<typeof BackendPlant>) => Promise<number>;
   };
   animal: {
     get: (id: number) => Promise<any>;
-    create: (value: z.TypeOf<typeof BackendAnimal>) => Promise<number>;
+    create: (value: TypeOf<typeof BackendAnimal>) => Promise<number>;
   };
 };

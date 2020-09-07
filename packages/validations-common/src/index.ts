@@ -1,13 +1,24 @@
-import * as z from 'zod';
+import * as C from 'io-ts/Codec';
+import * as D from 'io-ts/Decoder';
+import * as E from 'io-ts/Encoder';
+import { pipe } from 'fp-ts/function';
+
 import { PlantLifecycle } from '@mono/resolver-typedefs';
 
-export const ID = z.string();
+const encoder: E.Encoder<string, unknown> = {
+  encode: String,
+};
 
-export const name = z.string();
-export const lifespan = z.number();
+export const ID = {
+  decoder: D.string,
+  encoder: E.encoder,
+};
 
-export const lifecycle = z.union([
-  z.literal(PlantLifecycle.Deciduous),
-  z.literal(PlantLifecycle.Evergreen),
-  z.literal(PlantLifecycle.SemiDeciduous),
-]);
+export const name = D.string;
+export const lifespan = D.number;
+
+export const lifecycle = D.union(
+  D.literal(PlantLifecycle.Deciduous),
+  D.literal(PlantLifecycle.Evergreen),
+  D.literal(PlantLifecycle.SemiDeciduous)
+);

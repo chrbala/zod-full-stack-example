@@ -1,0 +1,11 @@
+{
+  "recommendations": [
+    "flowtype.flow-for-vscode",
+    "mgmcdermott.vscode-language-babel",
+    "dbaeumer.vscode-eslint",
+    "esbenp.prettier-vscode",
+    "christian-kohler.path-intellisense",
+    "eamodio.gitlens",
+    "apollographql.vscode-apollo"
+  ]
+}

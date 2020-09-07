@@ -1,6 +1,6 @@
 import { Context } from './types';
 import { BackendPlant, BackendAnimal } from '@mono/validations-api';
-import { ZodSchema, TypeOf } from 'zod';
+import { Decoder, TypeOf } from 'io-ts/Decoder';
 import { parse } from '@mono/utils-common';
 
 const database = {
@@ -8,7 +8,7 @@ const database = {
   animals: [] as Array<TypeOf<typeof BackendPlant>>,
 };
 
-const createTable = <T>(scope: Array<any>, schema: ZodSchema<T>) => ({
+const createTable = <A, B>(scope: Array<any>, schema: Decoder<A, B>) => ({
   create: async (val: any) => {
     const res = await parse(schema, val);
     return res.success

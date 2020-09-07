@@ -1,5 +1,3 @@
-import { Schema, ZodError, ZodErrorCode } from 'zod';
-
 const asError = (e: unknown) =>
   e instanceof Error ? e : typeof e === 'string' ? new Error(e) : new Error();
 
@@ -20,19 +18,9 @@ export const safeExec = <T extends any>(cb: () => T): ExecResult<T> => {
     return { success: false, error: asError(e) };
   }
 };
-
-export const safeExecAsync = <T extends any>(
-  cb: () => Promise<T>
-): Promise<ExecResult<T>> => {
-  // check for sync errors
-  const res = safeExec(cb);
-  if (!res.success) return Promise.resolve(res);
-
-  return Promise.resolve(res.data).then(
-    data => ({ success: true, data }),
-    error => ({ success: false, error: asError(error) })
-  );
-};
+import * as D from 'io-ts/Decoder';
+import { pipe } from 'fp-ts/function';
+import { fold } from 'fp-ts/Either';
 
 type ParseError = {
   code: string;
@@ -41,23 +29,21 @@ type ParseError = {
 type ParseResult<T> =
   | { success: true; data: T }
   | { success: false; errors: Array<ParseError> };
-export const parse = async <T>(
-  schema: Schema<T>,
-  data: unknown
-): Promise<ParseResult<T>> => {
-  const res = await safeExecAsync(() => schema.parseAsync(data));
-  if (res.success) return res;
-
-  if (res.error instanceof ZodError) {
-    return {
-      success: false,
-      errors: res.error.errors.map(({ code, message, path, ...rest }) => ({
-        path: path.map(String),
-        code: code === ZodErrorCode.custom_error ? message : code,
-        ...rest,
-      })),
-    };
-  }
-
-  throw res.error;
+export const parse = <A, B>(
+  schema: D.Decoder<A, B>,
+  data: any
+): Promise<ParseResult<B>> => {
+  return new Promise(resolve =>
+    pipe(
+      schema.decode(data),
+      fold(
+        errors => resolve({ success: false, errors: [] }), // TODO
+        data => resolve({ success: true, data })
+      )
+    )
+  );
 };
+
+export const isPresent = <T extends any>(
+  value: T | undefined | null
+): value is T => value !== null && value !== undefined;

@@ -1,15 +1,10 @@
-import * as z from 'zod';
+import * as D from 'io-ts/Decoder';
+import { id } from '@mono/validations-api';
 
-import { serializedID } from '@mono/validations-api';
+export const animalParent = D.partial({
+  id,
+});
 
-export const animalParent = z
-  .object({
-    id: serializedID,
-  })
-  .nonstrict();
-
-export const plantParent = z
-  .object({
-    id: serializedID,
-  })
-  .nonstrict();
+export const plantParent = D.partial({
+  id,
+});
