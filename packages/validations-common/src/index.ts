@@ -1,24 +1,129 @@
-import * as C from 'io-ts/Codec';
+import { fromEnum, makeError } from '@mono/utils-common';
 import * as D from 'io-ts/Decoder';
-import * as E from 'io-ts/Encoder';
 import { pipe } from 'fp-ts/function';
 
 import { PlantLifecycle } from '@mono/resolver-typedefs';
 
-const encoder: E.Encoder<string, unknown> = {
-  encode: String,
-};
+const WithLength = D.union(D.string, D.UnknownArray);
 
-export const ID = {
-  decoder: D.string,
-  encoder: E.encoder,
-};
+const maxLength = (length: number) =>
+  pipe(
+    WithLength,
+    D.parse(s =>
+      s.length <= length
+        ? D.success(s)
+        : D.failure(
+            s,
+            makeError({
+              code: 'too_long',
+              client: true,
+              params: { maxLength: String(length) },
+            })
+          )
+    )
+  );
 
-export const name = D.string;
-export const lifespan = D.number;
+const minLength = (length: number) =>
+  pipe(
+    WithLength,
+    D.parse(s =>
+      s.length >= length
+        ? D.success(s)
+        : D.failure(
+            s,
+            makeError({
+              code: 'too_short',
+              client: true,
+              params: { minLength: String(length) },
+            })
+          )
+    )
+  );
 
-export const lifecycle = D.union(
-  D.literal(PlantLifecycle.Deciduous),
-  D.literal(PlantLifecycle.Evergreen),
-  D.literal(PlantLifecycle.SemiDeciduous)
+const int = pipe(
+  D.number,
+  D.parse(n =>
+    Number.isInteger(n)
+      ? D.success(n)
+      : D.failure(
+          n,
+          makeError({
+            code: 'not_int',
+            client: true,
+          })
+        )
+  )
+);
+
+const min = ({ minimum, inclusive }: { minimum: number; inclusive: boolean }) =>
+  pipe(
+    D.number,
+    D.parse(n =>
+      (inclusive ? n >= minimum : n > minimum)
+        ? D.success(n)
+        : D.failure(
+            n,
+            makeError({
+              code: 'too_small',
+              client: true,
+              params: {
+                minimum: String(minimum),
+                inclusive: String(inclusive),
+              },
+            })
+          )
+    )
+  );
+
+const max = ({ maximum, inclusive }: { maximum: number; inclusive: boolean }) =>
+  pipe(
+    D.number,
+    D.parse(n =>
+      (inclusive ? n <= maximum : n < maximum)
+        ? D.success(n)
+        : D.failure(
+            n,
+            makeError({
+              code: 'too_big',
+              client: true,
+              params: {
+                maximum: String(maximum),
+                inclusive: String(inclusive),
+              },
+            })
+          )
+    )
+  );
+
+export const name = pipe(
+  minLength(3),
+  D.compose(maxLength(100)),
+  D.compose(D.string)
+);
+
+export const lifespan = pipe(
+  D.number,
+  D.compose(int),
+  D.compose(min({ minimum: 0, inclusive: false })),
+  D.compose(max({ maximum: 400000, inclusive: true }))
+);
+
+export const weight = pipe(
+  D.number,
+  D.compose(min({ minimum: 0, inclusive: false })),
+  D.compose(max({ maximum: 2e7, inclusive: true }))
+);
+
+export const lifecycle = fromEnum(PlantLifecycle);
+
+export const diet = pipe(
+  D.UnknownArray,
+  D.compose(maxLength(100)),
+  D.compose(D.array(D.string))
+);
+
+export const eatenBy = pipe(
+  D.UnknownArray,
+  D.compose(maxLength(100)),
+  D.compose(D.array(D.string))
 );

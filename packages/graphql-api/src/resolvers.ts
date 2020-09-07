@@ -1,11 +1,11 @@
 import {
   LivingThingPayload,
-  InputError,
   Animal,
   Plant,
+  InputError,
 } from '@mono/resolver-typedefs';
 import { LivingThingArgs, AddLivingThingArgs } from '@mono/validations-api';
-import { parse } from '@mono/utils-common';
+import { parse, prepareErrorsForTransit } from '@mono/utils-common';
 import { Context } from './types';
 import { Table, toGlobalId, DeserializedGlobalId } from '@mono/utils-server';
 import { animalParent, plantParent } from './validations';
@@ -30,6 +30,30 @@ const resolveNode = async (
         ...(await context.plant.get(id)),
       };
 
+const animalField = (name: string) => async (
+  parent: unknown,
+  _: unknown,
+  context: Context
+): Promise<string> => {
+  const res = await parse(animalParent, parent);
+
+  if (!res.success) throw res.errors;
+
+  return (await context.animal.get(res.data.id.id))[name];
+};
+
+const plantField = (name: string) => async (
+  parent: unknown,
+  _: unknown,
+  context: Context
+): Promise<string> => {
+  const res = await parse(plantParent, parent);
+
+  if (!res.success) throw res.errors;
+
+  return (await context.plant.get(res.data.id.id))[name];
+};
+
 export const resolvers = {
   Query: {
     livingThing: async (
@@ -44,7 +68,7 @@ export const resolvers = {
       if (!parsed.success) {
         return {
           __typename: 'InputError',
-          errors: parsed.errors,
+          errors: prepareErrorsForTransit(parsed.errors),
         };
       }
 
@@ -59,10 +83,14 @@ export const resolvers = {
       const parsed = await parse(AddLivingThingArgs, args);
 
       if (!parsed.success) {
-        return {
+        const res = {
           __typename: 'InputError',
-          errors: parsed.errors,
-        };
+          errors: prepareErrorsForTransit(parsed.errors),
+        } as InputError;
+
+        console.log(JSON.stringify(parsed.errors, null, 2));
+
+        return res;
       }
 
       const {
@@ -89,12 +117,27 @@ export const resolvers = {
               table: Table.Plant,
             };
 
+      const globalId = toGlobalId(id);
+
+      if (input.__typename === 'Animal') {
+        await context.diet.set(globalId, {
+          diet: input.diet,
+          eatenBy: input.eatenBy,
+        });
+      }
+
+      if (input.__typename === 'Plant') {
+        await context.diet.set(globalId, {
+          diet: [],
+          eatenBy: input.eatenBy,
+        });
+      }
+
       return {
         __typename: 'AddLivingThingPayload',
         node: {
-          ...livingThing,
           __typename,
-          id: toGlobalId(id),
+          id: globalId,
         },
       };
     },
@@ -107,28 +150,45 @@ export const resolvers = {
   LivingThingResult: resolveByTypename,
   AllLivingThingsResult: resolveByTypename,
   Plant: {
+    name: plantField('name'),
+    lifespan: plantField('lifespan'),
+    weight: plantField('weight'),
+    lifecycle: plantField('lifecycle'),
     eatenBy: async (parent: unknown, _: unknown, context: Context) => {
       const res = await parse(plantParent, parent);
 
       if (!res.success) throw res.errors;
 
-      return [];
+      return (
+        await context.diet.get(toGlobalId(res.data.id))
+      ).eatenBy.map(id => ({ __typename: 'Animal', id }));
     },
   },
   Animal: {
+    name: animalField('name'),
+    lifespan: animalField('lifespan'),
+    weight: animalField('weight'),
     eatenBy: async (parent: unknown, _: unknown, context: Context) => {
       const res = await parse(animalParent, parent);
 
       if (!res.success) throw res.errors;
 
-      return [];
+      return (await context.diet.get(toGlobalId(res.data.id))).eatenBy.map(
+        id => ({
+          __typename: 'Animal',
+          id,
+        })
+      );
     },
     diet: async (parent: unknown, _: unknown, context: Context) => {
       const res = await parse(animalParent, parent);
 
       if (!res.success) throw res.errors;
 
-      return [];
+      return (await context.diet.get(toGlobalId(res.data.id))).diet.map(id => ({
+        __typename: res.data.id.table === Table.Animal ? 'Animal' : 'Plant',
+        id,
+      }));
     },
   },
 };

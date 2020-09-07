@@ -4,29 +4,37 @@ import {
   toGlobalId,
   DeserializedGlobalId,
 } from '@mono/utils-server';
-
+import { makeError } from '@mono/utils-common';
 import * as C from 'io-ts/Codec';
 import * as D from 'io-ts/Decoder';
 import * as E from 'io-ts/Encoder';
 import { pipe } from 'fp-ts/function';
-
-import { PlantLifecycle } from '@mono/resolver-typedefs';
-
-export const name = D.string;
-export const lifespan = D.number;
-export const weight = D.number;
-
-export const lifecycle = D.union(
-  D.literal(PlantLifecycle.Deciduous),
-  D.literal(PlantLifecycle.Evergreen),
-  D.literal(PlantLifecycle.SemiDeciduous)
-);
+import {
+  name,
+  lifespan,
+  weight,
+  lifecycle,
+  diet,
+  eatenBy,
+} from '@mono/validations-common';
 
 const idD = pipe(
   D.string,
   D.parse(id => {
     const res = fromGlobalId(id);
-    return res instanceof Error ? D.failure(res, res.message) : D.success(res);
+    return res instanceof Error
+      ? D.failure(
+          res,
+          makeError({
+            code: 'invalid_id',
+            client: true,
+            debug: {
+              type: res.name,
+              data: res.data,
+            },
+          })
+        )
+      : D.success(res);
   })
 );
 
@@ -44,7 +52,15 @@ const typedId = (...table: Array<Table>) =>
   pipe(
     id,
     D.parse(id =>
-      table.includes(id.table) ? D.success(id) : D.failure(id, 'invalid_table')
+      table.includes(id.table)
+        ? D.success(id)
+        : D.failure(
+            id,
+            makeError({
+              code: 'invalid_id',
+              client: true,
+            })
+          )
     )
   );
 
@@ -57,12 +73,15 @@ const LivingThingCommonD = D.type({
   weight,
 });
 
+const Diet = pipe(diet, D.compose(D.array(pipe(livingThingId, foreignKeyD))));
+const EatenBy = pipe(eatenBy, D.compose(D.array(pipe(animalId, foreignKeyD))));
+
 const AnimalInput = pipe(
   LivingThingCommonD,
   D.intersect(
     D.type({
-      diet: D.array(pipe(livingThingId, foreignKeyD)),
-      eatenBy: D.array(pipe(animalId, foreignKeyD)),
+      diet: Diet,
+      eatenBy: EatenBy,
     })
   )
 );
@@ -71,9 +90,7 @@ export const BackendAnimal = LivingThingCommonD;
 
 const PlantInput = pipe(
   LivingThingCommonD,
-  D.intersect(
-    D.type({ eatenBy: D.array(pipe(animalId, foreignKeyD)), lifecycle })
-  )
+  D.intersect(D.type({ eatenBy: EatenBy, lifecycle }))
 );
 
 export const BackendPlant = pipe(
@@ -84,13 +101,13 @@ export const BackendPlant = pipe(
 export const LivingThingPatchCommon = D.type({
   name,
   lifespan,
-  eatenBy: D.array(pipe(animalId, foreignKeyD)),
+  eatenBy: EatenBy,
   weight,
 });
 
 export const AnimalPatchInput = pipe(
   LivingThingPatchCommon,
-  D.intersect(D.type({ diet: D.array(pipe(livingThingId, foreignKeyD)) }))
+  D.intersect(D.type({ diet: Diet }))
 );
 
 export const PlantPatchInput = pipe(
@@ -144,7 +161,10 @@ export const LivingThingInput = pipe(
   D.parse(union => {
     const { plant, animal } = union;
     if (Object.keys(union).length !== 1)
-      return D.failure(union, 'multiple_values');
+      return D.failure(
+        union,
+        makeError({ code: 'multiple_values', client: true })
+      );
 
     const val = plant
       ? { __typename: 'Plant' as const, ...plant }
@@ -152,7 +172,8 @@ export const LivingThingInput = pipe(
       ? { __typename: 'Animal' as const, ...animal }
       : null;
 
-    if (!val) return D.failure(union, 'no_value');
+    if (!val)
+      return D.failure(union, makeError({ code: 'no_value', client: true }));
 
     return D.success(val);
   })

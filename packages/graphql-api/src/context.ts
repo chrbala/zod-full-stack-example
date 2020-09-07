@@ -2,10 +2,12 @@ import { Context } from './types';
 import { BackendPlant, BackendAnimal } from '@mono/validations-api';
 import { Decoder, TypeOf } from 'io-ts/Decoder';
 import { parse } from '@mono/utils-common';
+import { Graph } from 'graphlib';
 
 const database = {
   plants: [] as Array<TypeOf<typeof BackendAnimal>>,
   animals: [] as Array<TypeOf<typeof BackendPlant>>,
+  diets: new Graph(),
 };
 
 const createTable = <A, B>(scope: Array<any>, schema: Decoder<A, B>) => ({
@@ -19,7 +21,30 @@ const createTable = <A, B>(scope: Array<any>, schema: Decoder<A, B>) => ({
     scope.length > id ? scope[id] : Promise.reject(new Error('not_found')),
 });
 
+const getDiet = async (id: string) => {
+  const outEdges = database.diets.outEdges(id);
+  const inEdges = database.diets.inEdges(id);
+
+  if (!outEdges || !inEdges) return Promise.reject(new Error('not_found'));
+
+  const diet = outEdges.map(({ w }) => w);
+  const eatenBy = inEdges.map(({ v }) => v);
+
+  return { diet, eatenBy };
+};
+
 export const context = (): Context => ({
   plant: createTable(database.plants, BackendPlant),
   animal: createTable(database.animals, BackendAnimal),
+  diet: {
+    get: getDiet,
+    set: async (id, diets) => {
+      if (!database.diets.hasNode(id)) database.diets.setNode(id);
+
+      diets.diet.forEach(outEdge => database.diets.setEdge(id, outEdge));
+      diets.eatenBy.forEach(inEdge => database.diets.setEdge(inEdge, id));
+
+      return getDiet(id);
+    },
+  },
 });

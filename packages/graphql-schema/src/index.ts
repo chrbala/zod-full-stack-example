@@ -40,13 +40,23 @@ export const typeDefs = gql`
     weight: Float!
   }
 
-  type Error {
-    path: [String!]!
+  type InputErrorParam {
+    key: String!
+    value: String!
+  }
+
+  type InputErrorData {
     code: String!
+    params: [InputErrorParam!]!
+  }
+
+  type ErrorElement {
+    path: [String!]!
+    errors: [InputErrorData!]!
   }
 
   type InputError {
-    errors: [Error!]!
+    errors: [ErrorElement!]!
   }
 
   input AnimalInput {
