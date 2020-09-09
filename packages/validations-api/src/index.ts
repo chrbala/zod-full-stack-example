@@ -1,13 +1,6 @@
-import {
-  fromGlobalId,
-  Table,
-  toGlobalId,
-  DeserializedGlobalId,
-} from '@mono/utils-server';
+import { fromGlobalId, Table, toGlobalId } from '@mono/utils-server';
 import { makeError } from '@mono/utils-common';
-import * as C from 'io-ts/Codec';
 import * as D from 'io-ts/Decoder';
-import * as E from 'io-ts/Encoder';
 import { pipe } from 'fp-ts/function';
 import {
   name,
@@ -18,7 +11,7 @@ import {
   eatenBy,
 } from '@mono/validations-common';
 
-const idD = pipe(
+export const id = pipe(
   D.string,
   D.parse(id => {
     const res = fromGlobalId(id);
@@ -34,17 +27,13 @@ const idD = pipe(
             },
           })
         )
-      : D.success(res);
+      : D.success({ ...res, serialized: id });
   })
 );
 
-const idE: E.Encoder<string, DeserializedGlobalId> = {
-  encode: toGlobalId,
-};
+export type IDType = D.TypeOf<typeof id>;
 
-export const id = C.make(idD, idE);
-
-const foreignKeyD = D.parse<D.TypeOf<typeof idD>, string>(id =>
+const foreignKey = D.parse<D.TypeOf<typeof id>, string>(id =>
   D.success(toGlobalId(id))
 );
 
@@ -73,8 +62,8 @@ const LivingThingCommonD = D.type({
   weight,
 });
 
-const Diet = pipe(diet, D.compose(D.array(pipe(livingThingId, foreignKeyD))));
-const EatenBy = pipe(eatenBy, D.compose(D.array(pipe(animalId, foreignKeyD))));
+const Diet = pipe(diet, D.compose(D.array(pipe(livingThingId, foreignKey))));
+const EatenBy = pipe(eatenBy, D.compose(D.array(pipe(animalId, foreignKey))));
 
 const AnimalInput = pipe(
   LivingThingCommonD,

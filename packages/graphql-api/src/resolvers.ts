@@ -4,10 +4,15 @@ import {
   Plant,
   InputError,
 } from '@mono/resolver-typedefs';
-import { LivingThingArgs, AddLivingThingArgs } from '@mono/validations-api';
+import {
+  LivingThingArgs,
+  AddLivingThingArgs,
+  IDType,
+  id,
+} from '@mono/validations-api';
 import { parse, prepareErrorsForTransit } from '@mono/utils-common';
 import { Context } from './types';
-import { Table, toGlobalId, DeserializedGlobalId } from '@mono/utils-server';
+import { Table, toGlobalId } from '@mono/utils-server';
 import { animalParent, plantParent } from './validations';
 
 const resolveByTypename = {
@@ -15,18 +20,18 @@ const resolveByTypename = {
 };
 
 const resolveNode = async (
-  { table, id }: DeserializedGlobalId,
+  { table, id, serialized }: IDType,
   context: Context
 ): Promise<Animal | Plant> =>
   table === Table.Animal
     ? {
         __typename: 'Animal',
-        id: toGlobalId({ table: Table.Animal, id: id }),
+        id: serialized,
         ...(await context.animal.get(id)),
       }
     : {
         __typename: 'Plant',
-        id: toGlobalId({ table: Table.Plant, id: id }),
+        id: serialized,
         ...(await context.plant.get(id)),
       };
 
@@ -159,9 +164,12 @@ export const resolvers = {
 
       if (!res.success) throw res.errors;
 
-      return (
-        await context.diet.get(toGlobalId(res.data.id))
-      ).eatenBy.map(id => ({ __typename: 'Animal', id }));
+      return (await context.diet.get(res.data.id.serialized)).eatenBy.map(
+        id => ({
+          __typename: 'Animal',
+          id,
+        })
+      );
     },
   },
   Animal: {
@@ -173,7 +181,7 @@ export const resolvers = {
 
       if (!res.success) throw res.errors;
 
-      return (await context.diet.get(toGlobalId(res.data.id))).eatenBy.map(
+      return (await context.diet.get(res.data.id.serialized)).eatenBy.map(
         id => ({
           __typename: 'Animal',
           id,
@@ -185,9 +193,17 @@ export const resolvers = {
 
       if (!res.success) throw res.errors;
 
-      return (await context.diet.get(toGlobalId(res.data.id))).diet.map(id => ({
-        __typename: res.data.id.table === Table.Animal ? 'Animal' : 'Plant',
-        id,
+      const { diet } = await context.diet.get(res.data.id.serialized);
+      const parsedIds = diet.map(async el => {
+        const parsedId = await parse(id, el);
+        return parsedId.success
+          ? Promise.resolve(parsedId.data)
+          : Promise.reject(parsedId.errors);
+      });
+
+      return (await Promise.all(parsedIds)).map(({ table, serialized }) => ({
+        __typename: table === Table.Animal ? 'Animal' : 'Plant',
+        id: serialized,
       }));
     },
   },
