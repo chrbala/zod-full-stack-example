@@ -105,20 +105,11 @@ export const resolvers = {
       const id =
         input.__typename === 'Animal'
           ? {
-              id: await context.animal.create({
-                name: input.name,
-                lifespan: input.lifespan,
-                weight: input.weight,
-              }),
+              id: await context.animal.create(input),
               table: Table.Animal,
             }
           : {
-              id: await context.plant.create({
-                name: input.name,
-                lifespan: input.lifespan,
-                weight: input.weight,
-                lifecycle: input.lifecycle,
-              }),
+              id: await context.plant.create(input),
               table: Table.Plant,
             };
 

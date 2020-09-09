@@ -14,11 +14,14 @@ const createTable = <A, B>(scope: Array<any>, schema: Decoder<A, B>) => ({
   create: async (val: any) => {
     const res = await parse(schema, val);
     return res.success
-      ? Promise.resolve(scope.push(val) - 1)
+      ? Promise.resolve(scope.push(res.data) - 1)
       : Promise.reject(res.errors);
   },
-  get: async (id: number) =>
-    scope.length > id ? scope[id] : Promise.reject(new Error('not_found')),
+  get: async (id: number) => {
+    if (id >= scope.length) return Promise.reject(new Error('not_found'));
+    const res = await parse(schema, scope[id]);
+    return res.success ? res.data : Promise.reject('parse_error');
+  },
 });
 
 const getDiet = async (id: string) => {
