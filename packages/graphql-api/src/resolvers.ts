@@ -1,28 +1,31 @@
-import {
-  LivingThingPayload,
-  Animal,
-  Plant,
-  InputError,
-} from '@mono/resolver-typedefs';
+import { InputError } from '@mono/resolver-typedefs';
 import {
   LivingThingArgs,
   AddLivingThingArgs,
   IDType,
   id,
+  BackendAnimal,
+  BackendPlant,
 } from '@mono/validations-api';
 import { parse, prepareErrorsForTransit } from '@mono/utils-common';
 import { Context } from './types';
 import { Table, toGlobalId } from '@mono/utils-server';
 import { animalParent, plantParent } from './validations';
+import { TypeOf } from 'io-ts/Decoder';
 
 const resolveByTypename = {
   __resolveType: ({ __typename }: { __typename: string }) => __typename,
 };
 
+type LivingThingNodeType = (BackendAnimalType | BackendPlantType) & {
+  __typename: string;
+  id: string;
+};
+
 const resolveNode = async (
   { table, id, serialized }: IDType,
   context: Context
-): Promise<Animal | Plant> =>
+): Promise<LivingThingNodeType> =>
   table === Table.Animal
     ? {
         __typename: 'Animal',
@@ -35,11 +38,13 @@ const resolveNode = async (
         ...(await context.plant.get(id)),
       };
 
-const animalField = (name: string) => async (
+type BackendAnimalType = TypeOf<typeof BackendAnimal>;
+
+const animalField = (name: keyof BackendAnimalType) => async (
   parent: unknown,
   _: unknown,
   context: Context
-): Promise<string> => {
+): Promise<BackendAnimalType[keyof BackendAnimalType]> => {
   const res = await parse(animalParent, parent);
 
   if (!res.success) throw res.errors;
@@ -47,11 +52,13 @@ const animalField = (name: string) => async (
   return (await context.animal.get(res.data.id.id))[name];
 };
 
-const plantField = (name: string) => async (
+type BackendPlantType = TypeOf<typeof BackendPlant>;
+
+const plantField = (name: keyof BackendPlantType) => async (
   parent: unknown,
   _: unknown,
   context: Context
-): Promise<string> => {
+): Promise<BackendPlantType[keyof BackendPlantType]> => {
   const res = await parse(plantParent, parent);
 
   if (!res.success) throw res.errors;
@@ -66,7 +73,10 @@ export const resolvers = {
       args: unknown,
       context: Context
     ): Promise<
-      InputError | (LivingThingPayload & { node: Animal | Plant })
+      | InputError
+      | ({ __typename?: 'LivingThingPayload' } & {
+          node: BackendPlantType | BackendAnimalType;
+        })
     > => {
       const parsed = await parse(LivingThingArgs, args);
 

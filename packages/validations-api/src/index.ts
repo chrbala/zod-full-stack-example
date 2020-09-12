@@ -56,7 +56,7 @@ const typedId = (...table: Array<Table>) =>
 const animalId = typedId(Table.Animal);
 const livingThingId = typedId(Table.Animal, Table.Plant);
 
-const LivingThingCommonD = D.type({
+const LivingThingCommon = D.type({
   name,
   lifespan,
   weight,
@@ -66,7 +66,7 @@ const Diet = pipe(diet, D.compose(D.array(pipe(livingThingId, foreignKey))));
 const EatenBy = pipe(eatenBy, D.compose(D.array(pipe(animalId, foreignKey))));
 
 const AnimalInput = pipe(
-  LivingThingCommonD,
+  LivingThingCommon,
   D.intersect(
     D.type({
       diet: Diet,
@@ -75,33 +75,39 @@ const AnimalInput = pipe(
   )
 );
 
-export const BackendAnimal = LivingThingCommonD;
+export const BackendAnimal = LivingThingCommon;
 
 const PlantInput = pipe(
-  LivingThingCommonD,
+  LivingThingCommon,
   D.intersect(D.type({ eatenBy: EatenBy, lifecycle }))
 );
 
 export const BackendPlant = pipe(
-  LivingThingCommonD,
+  LivingThingCommon,
   D.intersect(D.type({ lifecycle }))
 );
 
 export const LivingThingPatchCommon = D.type({
   name,
   lifespan,
-  eatenBy: EatenBy,
   weight,
 });
 
 export const AnimalPatchInput = pipe(
   LivingThingPatchCommon,
-  D.intersect(D.type({ diet: Diet }))
+  D.intersect(D.type({ diet: Diet, eatenBy: EatenBy }))
 );
+
+export const BackendAnimalPatchInput = LivingThingPatchCommon;
 
 export const PlantPatchInput = pipe(
   LivingThingPatchCommon,
-  D.intersect(D.type({ lifecycle }))
+  D.intersect(D.type({ lifecycle, eatenBy: EatenBy }))
+);
+
+export const BackendPlantPatchInput = pipe(
+  LivingThingPatchCommon,
+  D.intersect(D.type({ lifecycle, eatenBy: EatenBy }))
 );
 
 export const LivingThingPatchInput = D.type({
