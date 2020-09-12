@@ -1,5 +1,6 @@
 import { BackendPlant, BackendAnimal } from '@mono/validations-api';
 import { TypeOf } from 'io-ts/Decoder';
+import { NullablePartial } from '@mono/utils-common';
 
 export type Diet = {
   diet: Array<string>;
@@ -19,6 +20,6 @@ export type Context = {
   diet: {
     get: (id: string) => Promise<Diet>;
     set: (id: string, diet: Diet) => Promise<Diet>;
-    update: (id: string, diet: Partial<Diet>) => Promise<Diet>;
+    update: (id: string, diet: NullablePartial<Diet>) => Promise<Diet>;
   };
 };

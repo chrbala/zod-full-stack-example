@@ -3,6 +3,7 @@ import { pipe } from 'fp-ts/function';
 import { fold, left } from 'fp-ts/Either';
 import { report } from './reporter';
 import { ParseErrors } from './errorCode';
+import { TypeOf } from 'io-ts/lib/Guard';
 export { makeError, prepareErrorsForTransit } from './errorCode';
 
 const asError = (e: unknown) =>
@@ -69,3 +70,16 @@ export function fromEnum<T extends EnumLike>(
 
   return pipe(D.union(D.string, D.number), D.refine(isEnumValue, 'enum'));
 }
+
+export type NullablePartial<A> = Partial<{ [K in keyof A]: A[K] | null }>;
+
+export const nullablePartial = <A>(
+  properties: { [K in keyof A]: D.Decoder<unknown, A[K]> }
+): D.Decoder<unknown, NullablePartial<A>> => {
+  const out: any = {};
+  for (const key in properties) {
+    out[key] = D.nullable(properties[key]);
+  }
+
+  return D.partial(out);
+};

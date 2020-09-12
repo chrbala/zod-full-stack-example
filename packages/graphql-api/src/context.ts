@@ -6,7 +6,7 @@ import {
   BackendAnimalPatchInput,
 } from '@mono/validations-api';
 import { Decoder, TypeOf } from 'io-ts/Decoder';
-import { parse } from '@mono/utils-common';
+import { parse, NullablePartial } from '@mono/utils-common';
 import { id as ID } from '@mono/validations-api';
 import { Graph } from 'graphlib';
 import { Table } from '@mono/utils-server';
@@ -22,7 +22,7 @@ const database = {
 const createTable = <T>(
   scope: Array<any>,
   schema: Decoder<unknown, T>,
-  patch: Decoder<unknown, Partial<T>>
+  patch: Decoder<unknown, NullablePartial<T>>
 ): TableType<T> => {
   const create = async (val: unknown) => {
     const res = await parse(schema, val);

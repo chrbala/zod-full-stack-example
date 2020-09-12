@@ -1,5 +1,5 @@
 import { fromGlobalId, Table, toGlobalId } from '@mono/utils-server';
-import { makeError } from '@mono/utils-common';
+import { makeError, nullablePartial } from '@mono/utils-common';
 import * as D from 'io-ts/Decoder';
 import { pipe } from 'fp-ts/function';
 import {
@@ -87,31 +87,41 @@ export const BackendPlant = pipe(
   D.intersect(D.type({ lifecycle }))
 );
 
-export const LivingThingPatchCommon = D.partial({
-  name,
-  lifespan,
-  weight,
+export const LivingThingPatchCommon = nullablePartial({
+  name: name,
+  lifespan: lifespan,
+  weight: weight,
 });
 
 export const AnimalPatchInput = pipe(
   LivingThingPatchCommon,
-  D.intersect(D.partial({ diet: Diet, eatenBy: EatenBy }))
+  D.intersect(
+    nullablePartial({
+      diet: Diet,
+      eatenBy: EatenBy,
+    })
+  )
 );
 
 export const BackendAnimalPatchInput = LivingThingPatchCommon;
 
 export const PlantPatchInput = pipe(
   LivingThingPatchCommon,
-  D.intersect(D.partial({ lifecycle, eatenBy: EatenBy }))
+  D.intersect(
+    nullablePartial({
+      lifecycle: lifecycle,
+      eatenBy: EatenBy,
+    })
+  )
 );
 
 export const BackendPlantPatchInput = pipe(
   LivingThingPatchCommon,
-  D.intersect(D.type({ lifecycle, eatenBy: EatenBy }))
+  D.intersect(D.type({ lifecycle: lifecycle, eatenBy: EatenBy }))
 );
 
 export const LivingThingPatchInput = pipe(
-  D.partial({
+  nullablePartial({
     animal: AnimalPatchInput,
     plant: PlantPatchInput,
   }),
@@ -170,7 +180,7 @@ export const LivingThingArgs = D.type({
 });
 
 export const LivingThingInput = pipe(
-  D.partial({
+  nullablePartial({
     animal: AnimalInput,
     plant: PlantInput,
   }),
