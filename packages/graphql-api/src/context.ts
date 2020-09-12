@@ -1,4 +1,4 @@
-import { Context, TableType } from './types';
+import { Context, TableType, Diet } from './types';
 import {
   BackendPlant,
   BackendAnimal,
@@ -65,19 +65,10 @@ const createTable = <T>(
   };
 };
 
-const getDiet = async (id: string) => {
-  const outEdges = database.diets.outEdges(id);
-  const inEdges = database.diets.inEdges(id);
-
-  if (!outEdges || !inEdges) return Promise.reject(new Error('not_found'));
-
-  const diet = outEdges.map(({ w }) => w);
-  const eatenBy = inEdges.map(({ v }) => v);
-
-  return { diet, eatenBy };
-};
-
-const idsAreValid = (ids: Array<string>, context: Context): Promise<boolean> =>
+const idsAreValid = (
+  ids: Array<string>,
+  context: Pick<Context, 'plant' | 'animal'>
+): Promise<boolean> =>
   Promise.all(
     ids.map(async id => {
       const res = await parse(ID, id);
@@ -93,6 +84,61 @@ const idsAreValid = (ids: Array<string>, context: Context): Promise<boolean> =>
     () => false
   );
 
+const createDiet = (ctx: Pick<Context, 'plant' | 'animal'>) => {
+  const getDiet = async (id: string) => {
+    const outEdges = database.diets.outEdges(id);
+    const inEdges = database.diets.inEdges(id);
+
+    if (!outEdges || !inEdges) return Promise.reject(new Error('not_found'));
+
+    const diet = outEdges.map(({ w }) => w);
+    const eatenBy = inEdges.map(({ v }) => v);
+
+    return { diet, eatenBy };
+  };
+
+  const setDiet = async (id: string, diets: Diet) => {
+    const allIds = [id, ...diets.diet, ...diets.eatenBy];
+    if (!idsAreValid(allIds, ctx)) return Promise.reject('not_found');
+
+    if (!database.diets.hasNode(id)) database.diets.setNode(id);
+
+    diets.diet.forEach(outEdge => database.diets.setEdge(id, outEdge));
+    diets.eatenBy.forEach(inEdge => database.diets.setEdge(inEdge, id));
+
+    return getDiet(id);
+  };
+
+  const updateDiet = async (
+    id: string,
+    diets: Partial<Diet>
+  ): Promise<Diet> => {
+    const allIds = [id, ...(diets.diet ?? []), ...(diets.eatenBy ?? [])];
+    if (!idsAreValid(allIds, ctx)) return Promise.reject('not_found');
+
+    if (!database.diets.hasNode(id)) database.diets.setNode(id);
+
+    const inEdges = database.diets.inEdges(id);
+    if (inEdges && diets.eatenBy)
+      inEdges.forEach(e => database.diets.removeEdge(e));
+
+    const outEdges = database.diets.outEdges(id);
+    if (outEdges && diets.diet)
+      outEdges.forEach(e => database.diets.removeEdge(e));
+
+    return setDiet(id, {
+      diet: diets.diet ?? [],
+      eatenBy: diets.eatenBy ?? [],
+    });
+  };
+
+  return {
+    get: getDiet,
+    set: setDiet,
+    update: updateDiet,
+  };
+};
+
 export const context = (): Context => {
   const Plants = createTable(
     database.plants,
@@ -105,24 +151,9 @@ export const context = (): Context => {
     BackendAnimalPatchInput
   );
 
-  const ctx: Context = {
+  return {
     plant: Plants,
     animal: Animals,
-    diet: {
-      get: getDiet,
-      set: async (id, diets) => {
-        const allIds = [id, ...diets.diet, ...diets.eatenBy];
-        if (!idsAreValid(allIds, ctx)) return Promise.reject('not_found');
-
-        if (!database.diets.hasNode(id)) database.diets.setNode(id);
-
-        diets.diet.forEach(outEdge => database.diets.setEdge(id, outEdge));
-        diets.eatenBy.forEach(inEdge => database.diets.setEdge(inEdge, id));
-
-        return getDiet(id);
-      },
-    },
-  };
-
-  return ctx;
+    diet: createDiet({ plant: Plants, animal: Animals }),
+  } as Context;
 };

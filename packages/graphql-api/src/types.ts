@@ -19,5 +19,6 @@ export type Context = {
   diet: {
     get: (id: string) => Promise<Diet>;
     set: (id: string, diet: Diet) => Promise<Diet>;
+    update: (id: string, diet: Partial<Diet>) => Promise<Diet>;
   };
 };

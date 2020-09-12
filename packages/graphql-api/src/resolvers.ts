@@ -121,19 +121,17 @@ export const resolvers = {
 
       const globalId = toGlobalId(id);
 
-      if (input.__typename === 'Animal') {
+      if (input.__typename === 'Animal')
         await context.diet.set(globalId, {
           diet: input.diet,
           eatenBy: input.eatenBy,
         });
-      }
 
-      if (input.__typename === 'Plant') {
+      if (input.__typename === 'Plant')
         await context.diet.set(globalId, {
           diet: [],
           eatenBy: input.eatenBy,
         });
-      }
 
       return {
         __typename: 'AddLivingThingPayload',
@@ -154,15 +152,23 @@ export const resolvers = {
 
       const { id, patch } = res.data.input;
 
-      const [table, typename] =
-        id.table === Table.Animal
-          ? [context.animal, 'Animal']
-          : [context.plant, 'Plant'];
+      const table = id.table === Table.Animal ? context.animal : context.plant;
       const updated = await table.update(id.id, patch);
+
+      if (patch.__typename === 'Animal')
+        await context.diet.update(id.serialized, {
+          diet: patch.diet,
+          eatenBy: patch.eatenBy,
+        });
+
+      if (patch.__typename === 'Plant')
+        await context.diet.update(id.serialized, {
+          eatenBy: patch.eatenBy,
+        });
 
       return {
         __typename: 'UpdateLivingThingPayload',
-        node: { __typename: typename, id: id.serialized, ...updated },
+        node: { __typename: patch.__typename, id: id.serialized, ...updated },
       };
     },
     deleteLivingThing: async (
