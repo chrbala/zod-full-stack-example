@@ -110,10 +110,31 @@ export const BackendPlantPatchInput = pipe(
   D.intersect(D.type({ lifecycle, eatenBy: EatenBy }))
 );
 
-export const LivingThingPatchInput = D.type({
-  animal: AnimalInput,
-  plant: PlantInput,
-});
+export const LivingThingPatchInput = pipe(
+  D.partial({
+    animal: AnimalPatchInput,
+    plant: PlantPatchInput,
+  }),
+  D.parse(union => {
+    const { plant, animal } = union;
+    if (Object.keys(union).length !== 1)
+      return D.failure(
+        union,
+        makeError({ code: 'multiple_values', client: true })
+      );
+
+    const val = plant
+      ? { __typename: 'Plant' as const, ...plant }
+      : animal
+      ? { __typename: 'Animal' as const, ...animal }
+      : null;
+
+    if (!val)
+      return D.failure(union, makeError({ code: 'no_value', client: true }));
+
+    return D.success(val);
+  })
+);
 
 export const UpdateLivingThingInput = D.type({
   id: livingThingId,

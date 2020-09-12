@@ -92,7 +92,9 @@ export const typeDefs = gql`
   input AnimalPatchInput {
     name: String
     lifespan: Int
+    weight: Float
     diet: [ID!]
+    eatenBy: [ID!]
   }
 
   input PlantPatchInput {
@@ -108,6 +110,7 @@ export const typeDefs = gql`
   }
 
   input UpdateLivingThingInput {
+    id: ID!
     patch: LivingThingPatchInput!
   }
 
@@ -120,7 +123,7 @@ export const typeDefs = gql`
   }
 
   type DeleteLivingThingPayload {
-    success: Boolean!
+    deleted: Boolean!
   }
 
   type LivingThingPayload {

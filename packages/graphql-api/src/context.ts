@@ -32,13 +32,16 @@ const createTable = <T>(
   };
 
   const get = async (id: number) => {
-    if (id >= scope.length) return Promise.reject(new Error('not_found'));
-    const res = await parse(schema, scope[id]);
+    const value = scope[id];
+    if (!value) return Promise.reject(new Error('not_found'));
+
+    const res = await parse(schema, value);
     return res.success ? res.data : Promise.reject('parse_error');
   };
 
   const update = async (id: number, value: unknown): Promise<T> => {
     const input = await parse(patch, value);
+
     if (!input.success) return Promise.reject('not_found');
 
     const persisted = await get(id);
@@ -46,7 +49,12 @@ const createTable = <T>(
   };
 
   const deleteEl = async (id: number) => {
+    if (id >= scope.length) return Promise.reject('not_found');
+
+    const deleted = !!scope[id];
     scope[id] = null;
+
+    return { deleted };
   };
 
   return {

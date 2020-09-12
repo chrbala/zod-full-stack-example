@@ -1,4 +1,4 @@
-import { InputError } from '@mono/resolver-typedefs';
+import { InputError, DeleteLivingThingPayload } from '@mono/resolver-typedefs';
 import {
   LivingThingArgs,
   AddLivingThingArgs,
@@ -6,6 +6,8 @@ import {
   id,
   BackendAnimal,
   BackendPlant,
+  UpdateLivingThingArgs,
+  DeleteLivingThingArgs,
 } from '@mono/validations-api';
 import { parse, prepareErrorsForTransit } from '@mono/utils-common';
 import { Context } from './types';
@@ -80,12 +82,11 @@ export const resolvers = {
     > => {
       const parsed = await parse(LivingThingArgs, args);
 
-      if (!parsed.success) {
+      if (!parsed.success)
         return {
           __typename: 'InputError',
           errors: prepareErrorsForTransit(parsed.errors),
         };
-      }
 
       return {
         __typename: 'LivingThingPayload',
@@ -94,22 +95,17 @@ export const resolvers = {
     },
   },
   Mutation: {
-    addLivingThing: async (_: any, args: any, context: Context) => {
+    addLivingThing: async (_: any, args: unknown, context: Context) => {
       const parsed = await parse(AddLivingThingArgs, args);
 
-      if (!parsed.success) {
-        const res = {
+      if (!parsed.success)
+        return {
           __typename: 'InputError',
           errors: prepareErrorsForTransit(parsed.errors),
         } as InputError;
 
-        console.log(JSON.stringify(parsed.errors, null, 2));
-
-        return res;
-      }
-
       const {
-        livingThing: { __typename, ...livingThing },
+        livingThing: { __typename },
       } = parsed.data.input;
       const { livingThing: input } = parsed.data.input;
       const id =
@@ -145,6 +141,52 @@ export const resolvers = {
           __typename,
           id: globalId,
         },
+      };
+    },
+    updateLivingThing: async (_: any, args: unknown, context: Context) => {
+      const res = await parse(UpdateLivingThingArgs, args);
+
+      if (!res.success)
+        return {
+          __typename: 'InputError',
+          errors: prepareErrorsForTransit(res.errors),
+        } as InputError;
+
+      const { id, patch } = res.data.input;
+
+      const [table, typename] =
+        id.table === Table.Animal
+          ? [context.animal, 'Animal']
+          : [context.plant, 'Plant'];
+      const updated = await table.update(id.id, patch);
+
+      return {
+        __typename: 'UpdateLivingThingPayload',
+        node: { __typename: typename, id: id.serialized, ...updated },
+      };
+    },
+    deleteLivingThing: async (
+      _: any,
+      args: unknown,
+      context: Context
+    ): Promise<InputError | DeleteLivingThingPayload> => {
+      const res = await parse(DeleteLivingThingArgs, args);
+
+      if (!res.success)
+        return {
+          __typename: 'InputError',
+          errors: prepareErrorsForTransit(res.errors),
+        } as InputError;
+
+      const { id } = res.data.input;
+
+      const table = id.table === Table.Animal ? context.animal : context.plant;
+
+      const { deleted } = await table.delete(id.id);
+
+      return {
+        __typename: 'DeleteLivingThingPayload',
+        deleted,
       };
     },
   },

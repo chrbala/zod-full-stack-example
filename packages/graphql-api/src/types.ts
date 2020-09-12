@@ -10,7 +10,7 @@ export type TableType<T> = {
   get: (id: number) => Promise<T>;
   create: (value: unknown) => Promise<number>;
   update: (id: number, value: Partial<unknown>) => Promise<T>;
-  delete: (id: number) => Promise<void>;
+  delete: (id: number) => Promise<{ deleted: boolean }>;
 };
 
 export type Context = {
