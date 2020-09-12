@@ -87,7 +87,7 @@ export const BackendPlant = pipe(
   D.intersect(D.type({ lifecycle }))
 );
 
-export const LivingThingPatchCommon = D.type({
+export const LivingThingPatchCommon = D.partial({
   name,
   lifespan,
   weight,
@@ -95,14 +95,14 @@ export const LivingThingPatchCommon = D.type({
 
 export const AnimalPatchInput = pipe(
   LivingThingPatchCommon,
-  D.intersect(D.type({ diet: Diet, eatenBy: EatenBy }))
+  D.intersect(D.partial({ diet: Diet, eatenBy: EatenBy }))
 );
 
 export const BackendAnimalPatchInput = LivingThingPatchCommon;
 
 export const PlantPatchInput = pipe(
   LivingThingPatchCommon,
-  D.intersect(D.type({ lifecycle, eatenBy: EatenBy }))
+  D.intersect(D.partial({ lifecycle, eatenBy: EatenBy }))
 );
 
 export const BackendPlantPatchInput = pipe(
