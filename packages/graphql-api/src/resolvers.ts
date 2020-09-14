@@ -8,7 +8,6 @@ import {
   BackendPlant,
   UpdateLivingThingArgs,
   DeleteLivingThingArgs,
-  AllLivingThingsInput,
 } from '@mono/validations-api';
 import { parse, prepareErrorsForTransit } from '@mono/utils-common';
 import { Context } from './types';
@@ -77,6 +76,125 @@ const plantField = (name: keyof BackendPlantType) => async (
   return (await context.plant.get(res.data.id.id))[name];
 };
 
+type MutationOptions = {
+  dryrun: boolean;
+};
+
+const addLivingThing = ({ dryrun }: MutationOptions) => async (
+  _: any,
+  args: unknown,
+  context: Context
+) => {
+  const parsed = await parse(AddLivingThingArgs, args);
+
+  if (!parsed.success || dryrun)
+    return {
+      __typename: 'InputError',
+      errors: !parsed.success ? prepareErrorsForTransit(parsed.errors) : [],
+    } as InputError;
+
+  const {
+    livingThing: { __typename },
+  } = parsed.data.input;
+  const { livingThing: input } = parsed.data.input;
+  const id =
+    input.__typename === 'Animal'
+      ? {
+          id: await context.animal.create(input),
+          table: Table.Animal,
+        }
+      : {
+          id: await context.plant.create(input),
+          table: Table.Plant,
+        };
+
+  const globalId = toGlobalId(id);
+
+  if (input.__typename === 'Animal')
+    await context.diet.set(globalId, {
+      diet: input.diet,
+      eatenBy: input.eatenBy,
+    });
+
+  if (input.__typename === 'Plant')
+    await context.diet.set(globalId, {
+      diet: [],
+      eatenBy: input.eatenBy,
+    });
+
+  return {
+    __typename: 'AddLivingThingPayload',
+    node: {
+      __typename,
+      id: globalId,
+    },
+  };
+};
+
+const updateLivingThing = ({ dryrun }: MutationOptions) => async (
+  _: any,
+  args: unknown,
+  context: Context
+) => {
+  const res = await parse(UpdateLivingThingArgs, args);
+
+  if (!res.success || dryrun)
+    return {
+      __typename: 'InputError',
+      errors: !res.success ? prepareErrorsForTransit(res.errors) : [],
+    } as InputError;
+
+  const { id, patch } = res.data.input;
+
+  const table = id.table === Table.Animal ? context.animal : context.plant;
+  const updated = await table.update(id.id, patch);
+
+  if (patch.__typename === 'Animal')
+    await context.diet.update(id.serialized, {
+      diet: patch.diet,
+      eatenBy: patch.eatenBy,
+    });
+
+  if (patch.__typename === 'Plant')
+    await context.diet.update(id.serialized, {
+      eatenBy: patch.eatenBy,
+    });
+
+  return {
+    __typename: 'UpdateLivingThingPayload',
+    node: {
+      __typename: patch.__typename,
+      id: id.serialized,
+      ...updated,
+    },
+  };
+};
+
+const deleteLivingThing = ({ dryrun }: MutationOptions) => async (
+  _: any,
+  args: unknown,
+  context: Context
+): Promise<InputError | DeleteLivingThingPayload> => {
+  const res = await parse(DeleteLivingThingArgs, args);
+
+  if (!res.success || dryrun)
+    return {
+      __typename: 'InputError',
+      errors: !res.success ? prepareErrorsForTransit(res.errors) : [],
+    } as InputError;
+
+  const { id } = res.data.input;
+
+  const table = id.table === Table.Animal ? context.animal : context.plant;
+
+  const { deleted } = await table.delete(id.id);
+
+  return {
+    __typename: 'DeleteLivingThingPayload',
+    deleted,
+  };
+};
+
 export const resolvers = {
   Query: {
     livingThing: async (
@@ -133,110 +251,14 @@ export const resolvers = {
       to the diet or eatenBy fields, the livingThing will get persisted,
       the diet/eatenBy fields will not, and the call will succeed.
     */
-    addLivingThing: async (_: any, args: unknown, context: Context) => {
-      const parsed = await parse(AddLivingThingArgs, args);
+    addLivingThing: addLivingThing({ dryrun: false }),
+    addLivingThingDryrun: addLivingThing({ dryrun: true }),
 
-      if (!parsed.success)
-        return {
-          __typename: 'InputError',
-          errors: prepareErrorsForTransit(parsed.errors),
-        } as InputError;
+    updateLivingThing: updateLivingThing({ dryrun: false }),
+    updateLivingThingDryrun: updateLivingThing({ dryrun: true }),
 
-      const {
-        livingThing: { __typename },
-      } = parsed.data.input;
-      const { livingThing: input } = parsed.data.input;
-      const id =
-        input.__typename === 'Animal'
-          ? {
-              id: await context.animal.create(input),
-              table: Table.Animal,
-            }
-          : {
-              id: await context.plant.create(input),
-              table: Table.Plant,
-            };
-
-      const globalId = toGlobalId(id);
-
-      if (input.__typename === 'Animal')
-        await context.diet.set(globalId, {
-          diet: input.diet,
-          eatenBy: input.eatenBy,
-        });
-
-      if (input.__typename === 'Plant')
-        await context.diet.set(globalId, {
-          diet: [],
-          eatenBy: input.eatenBy,
-        });
-
-      return {
-        __typename: 'AddLivingThingPayload',
-        node: {
-          __typename,
-          id: globalId,
-        },
-      };
-    },
-    updateLivingThing: async (_: any, args: unknown, context: Context) => {
-      const res = await parse(UpdateLivingThingArgs, args);
-
-      if (!res.success)
-        return {
-          __typename: 'InputError',
-          errors: prepareErrorsForTransit(res.errors),
-        } as InputError;
-
-      const { id, patch } = res.data.input;
-
-      const table = id.table === Table.Animal ? context.animal : context.plant;
-      const updated = await table.update(id.id, patch);
-
-      if (patch.__typename === 'Animal')
-        await context.diet.update(id.serialized, {
-          diet: patch.diet,
-          eatenBy: patch.eatenBy,
-        });
-
-      if (patch.__typename === 'Plant')
-        await context.diet.update(id.serialized, {
-          eatenBy: patch.eatenBy,
-        });
-
-      return {
-        __typename: 'UpdateLivingThingPayload',
-        node: {
-          __typename: patch.__typename,
-          id: id.serialized,
-          ...updated,
-        },
-      };
-    },
-    deleteLivingThing: async (
-      _: any,
-      args: unknown,
-      context: Context
-    ): Promise<InputError | DeleteLivingThingPayload> => {
-      const res = await parse(DeleteLivingThingArgs, args);
-
-      if (!res.success)
-        return {
-          __typename: 'InputError',
-          errors: prepareErrorsForTransit(res.errors),
-        } as InputError;
-
-      const { id } = res.data.input;
-
-      const table = id.table === Table.Animal ? context.animal : context.plant;
-
-      const { deleted } = await table.delete(id.id);
-
-      return {
-        __typename: 'DeleteLivingThingPayload',
-        deleted,
-      };
-    },
+    deleteLivingThing: deleteLivingThing({ dryrun: false }),
+    deleteLivingThingDryrun: deleteLivingThing({ dryrun: true }),
   },
   Node: resolveByTypename,
   AddLivingThingResult: resolveByTypename,

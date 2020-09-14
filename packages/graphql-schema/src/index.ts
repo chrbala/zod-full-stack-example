@@ -148,8 +148,13 @@ export const typeDefs = gql`
 
   type Mutation {
     addLivingThing(input: AddLivingThingInput!): AddLivingThingResult!
-    updateLivingThing(input: UpdateLivingThingInput!): UpdateLivingThingResult!
+    addLivingThingDryrun(input: AddLivingThingInput!): InputError!
+
+    updateLivingThingDryrun(input: UpdateLivingThingInput!): InputError!
+    updateLivingThing(input: UpdateLivingThingInput!): InputError!
+
     deleteLivingThing(input: DeleteLivingThingInput!): DeleteLivingThingResult!
+    deleteLivingThingDryrun(input: DeleteLivingThingInput!): InputError!
   }
 `;
 
