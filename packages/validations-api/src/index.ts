@@ -1,5 +1,5 @@
 import { fromGlobalId, Table, toGlobalId } from '@mono/utils-server';
-import { makeError, nullablePartial } from '@mono/utils-common';
+import { makeError, nullablePartial, int, min, max } from '@mono/utils-common';
 import * as D from 'io-ts/Decoder';
 import { pipe } from 'fp-ts/function';
 import {
@@ -168,7 +168,12 @@ export const NodeArgs = D.type({
 });
 
 export const AllLivingThingsInput = D.type({
-  page: D.number,
+  cursor: livingThingId,
+  count: pipe(
+    int,
+    D.compose(min({ minimum: 0, inclusive: true })),
+    D.compose(max({ maximum: 20, inclusive: true }))
+  ),
 });
 
 export const AllLivingThingsArgs = D.type({

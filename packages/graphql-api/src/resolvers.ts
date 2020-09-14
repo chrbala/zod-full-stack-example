@@ -8,12 +8,21 @@ import {
   BackendPlant,
   UpdateLivingThingArgs,
   DeleteLivingThingArgs,
+  AllLivingThingsInput,
 } from '@mono/validations-api';
 import { parse, prepareErrorsForTransit } from '@mono/utils-common';
 import { Context } from './types';
 import { Table, toGlobalId } from '@mono/utils-server';
 import { animalParent, plantParent } from './validations';
 import { TypeOf } from 'io-ts/Decoder';
+
+/*
+  In general, the implementations of these resolvers is minimal to illustrate
+  how people can set up full-stack validations. That is, the implementation 
+  does not cover things like concurrent updates - there are all kinds of race
+  conditions that would make this logic unsuitable for a real app, even if it
+  had a real database backing it.
+ */
 
 const resolveByTypename = {
   __resolveType: ({ __typename }: { __typename: string }) => __typename,
@@ -93,8 +102,37 @@ export const resolvers = {
         node: await resolveNode(parsed.data.id, context),
       };
     },
+    allLivingThings: async (_: unknown, __: unknown, ctx: Context) => {
+      const [animals, plants] = await Promise.all([
+        ctx.animal.all(),
+        ctx.plant.all(),
+      ]);
+
+      return {
+        __typename: 'AllLivingThingsPayload',
+        nodes: [
+          ...animals.map(el => ({
+            __typename: 'Animal',
+            id: toGlobalId({ table: Table.Animal, id: el.id }),
+            ...el.node,
+          })),
+          ...plants.map(el => ({
+            __typename: 'Plant',
+            id: toGlobalId({ table: Table.Plant, id: el.id }),
+            ...el.node,
+          })),
+        ],
+      };
+    },
   },
   Mutation: {
+    /*
+      Silently partial successes are possible on the add and update. 
+      Because each item is backed by two data stores without any logic
+      to enforce consistency, If valid but non-existing IDs are provided
+      to the diet or eatenBy fields, the livingThing will get persisted,
+      the diet/eatenBy fields will not, and the call will succeed.
+    */
     addLivingThing: async (_: any, args: unknown, context: Context) => {
       const parsed = await parse(AddLivingThingArgs, args);
 
@@ -168,7 +206,11 @@ export const resolvers = {
 
       return {
         __typename: 'UpdateLivingThingPayload',
-        node: { __typename: patch.__typename, id: id.serialized, ...updated },
+        node: {
+          __typename: patch.__typename,
+          id: id.serialized,
+          ...updated,
+        },
       };
     },
     deleteLivingThing: async (

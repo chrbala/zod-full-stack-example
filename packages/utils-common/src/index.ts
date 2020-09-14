@@ -3,7 +3,6 @@ import { pipe } from 'fp-ts/function';
 import { fold, left } from 'fp-ts/Either';
 import { report } from './reporter';
 import { ParseErrors } from './errorCode';
-import { TypeOf } from 'io-ts/lib/Guard';
 export { makeError, prepareErrorsForTransit } from './errorCode';
 
 const asError = (e: unknown) =>
@@ -83,3 +82,5 @@ export const nullablePartial = <A>(
 
   return D.partial(out);
 };
+
+export * from './validators';

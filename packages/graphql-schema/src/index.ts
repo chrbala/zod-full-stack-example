@@ -132,21 +132,14 @@ export const typeDefs = gql`
 
   union LivingThingResult = LivingThingPayload | InputError
 
-  input AllLivingThingsInput {
-    page: Int!
-  }
-
-  type AllLivingThingsPayload {
+  type AllLivingThingsResult {
     nodes: [LivingThing!]!
-    hasNextPage: Boolean!
   }
-
-  union AllLivingThingsResult = AllLivingThingsPayload | InputError
 
   type Query {
     node(id: ID!): Node
     livingThing(id: ID!): LivingThingResult!
-    allLivingThings(input: AllLivingThingsInput!): AllLivingThingsResult!
+    allLivingThings: AllLivingThingsResult!
   }
 
   union AddLivingThingResult = AddLivingThingPayload | InputError
