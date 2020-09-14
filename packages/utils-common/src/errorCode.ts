@@ -48,7 +48,7 @@ const ErrorCode = pipe(
 );
 
 export const ParseError = D.union(ParsedRichMessage, ErrorCode);
-const ParseErrorData = D.type({
+export const ParseErrorData = D.type({
   path: D.array(D.string),
   errors: D.array(ParseError),
 });

@@ -2,8 +2,10 @@ import * as D from 'io-ts/Decoder';
 import { pipe } from 'fp-ts/function';
 import { fold, left } from 'fp-ts/Either';
 import { report } from './reporter';
-import { ParseErrors } from './errorCode';
+import { ParseErrors, ParseErrorData } from './errorCode';
 export { makeError, prepareErrorsForTransit } from './errorCode';
+
+export type ParseErrorDataType = D.TypeOf<typeof ParseErrorData>;
 
 const asError = (e: unknown) =>
   e instanceof Error ? e : typeof e === 'string' ? new Error(e) : new Error();

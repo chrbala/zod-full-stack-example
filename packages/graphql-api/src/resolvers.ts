@@ -8,8 +8,13 @@ import {
   BackendPlant,
   UpdateLivingThingArgs,
   DeleteLivingThingArgs,
+  LivingThingPatchInput,
 } from '@mono/validations-api';
-import { parse, prepareErrorsForTransit } from '@mono/utils-common';
+import {
+  parse,
+  prepareErrorsForTransit,
+  ParseErrorDataType,
+} from '@mono/utils-common';
 import { Context } from './types';
 import { Table, toGlobalId } from '@mono/utils-server';
 import { animalParent, plantParent } from './validations';
@@ -80,6 +85,46 @@ type MutationOptions = {
   dryrun: boolean;
 };
 
+const serverValidateLivingThing = async (
+  livingThing: TypeOf<typeof LivingThingPatchInput>,
+  context: Context
+): Promise<Array<ParseErrorDataType> | null> => {
+  if (livingThing.name) {
+    const [animals, plants] = await Promise.all([
+      context.animal.all(),
+      context.plant.all(),
+    ]);
+
+    const allNames = [...animals, ...plants].map(({ node }) => node.name);
+    if (allNames.includes(livingThing.name))
+      return [
+        {
+          path: ['name'],
+          errors: [
+            {
+              code: 'not_unique',
+              client: true,
+              params: {},
+              debug: {},
+            },
+          ],
+        },
+      ];
+  }
+
+  return null;
+};
+
+const applyRootToErrors = (
+  root: Array<string>,
+  errors: null | Array<ParseErrorDataType>
+): null | Array<ParseErrorDataType> =>
+  errors &&
+  errors.map(e => ({
+    ...e,
+    path: [...root, ...e.path],
+  }));
+
 const addLivingThing = ({ dryrun }: MutationOptions) => async (
   _: any,
   args: unknown,
@@ -87,11 +132,24 @@ const addLivingThing = ({ dryrun }: MutationOptions) => async (
 ) => {
   const parsed = await parse(AddLivingThingArgs, args);
 
-  if (!parsed.success || dryrun)
+  if (!parsed.success)
     return {
       __typename: 'InputError',
-      errors: !parsed.success ? prepareErrorsForTransit(parsed.errors) : [],
-    } as InputError;
+      errors: prepareErrorsForTransit(parsed.errors),
+    };
+
+  const serverErrors = applyRootToErrors(
+    ['input', 'livingThing'],
+    await serverValidateLivingThing(parsed.data.input.livingThing, context)
+  );
+
+  if (serverErrors)
+    return {
+      __typename: 'InputError',
+      errors: prepareErrorsForTransit(serverErrors),
+    };
+
+  if (dryrun) return null;
 
   const {
     livingThing: { __typename },
@@ -138,13 +196,26 @@ const updateLivingThing = ({ dryrun }: MutationOptions) => async (
 ) => {
   const res = await parse(UpdateLivingThingArgs, args);
 
-  if (!res.success || dryrun)
+  if (!res.success)
     return {
       __typename: 'InputError',
-      errors: !res.success ? prepareErrorsForTransit(res.errors) : [],
-    } as InputError;
+      errors: prepareErrorsForTransit(res.errors),
+    };
 
   const { id, patch } = res.data.input;
+
+  const serverErrors = applyRootToErrors(
+    ['input', 'patch'],
+    await serverValidateLivingThing(patch, context)
+  );
+
+  if (serverErrors)
+    return {
+      __typename: 'InputError',
+      errors: prepareErrorsForTransit(serverErrors),
+    };
+
+  if (dryrun) return null;
 
   const table = id.table === Table.Animal ? context.animal : context.plant;
   const updated = await table.update(id.id, patch);
