@@ -1,9 +1,11 @@
 import * as D from 'io-ts/Decoder';
+import * as C from 'io-ts/Codec';
 import { pipe } from 'fp-ts/function';
-import { fold, left } from 'fp-ts/Either';
+import { Either, fold, left } from 'fp-ts/Either';
 import { report } from './reporter';
 import { ParseErrors, ParseErrorData } from './errorCode';
-export { makeError, prepareErrorsForTransit } from './errorCode';
+import { DecodeError } from 'io-ts/lib/DecodeError';
+export { makeError, prepareErrorsForTransit, ParamsCodec } from './errorCode';
 
 export type ParseErrorDataType = D.TypeOf<typeof ParseErrorData>;
 
@@ -28,34 +30,40 @@ export const safeExec = <T extends any>(cb: () => T): ExecResult<T> => {
   }
 };
 
-type ParseResult<T> =
-  | { success: true; data: T }
-  | { success: false; errors: D.TypeOf<typeof ParseErrors> };
-export const parse = <A, B>(
-  schema: D.Decoder<A, B>,
+export type SuccessResult<T> = { success: true; data: T };
+export type ErrorResult = {
+  success: false;
+  errors: D.TypeOf<typeof ParseErrors>;
+};
+export type ParseResult<T> = SuccessResult<T> | ErrorResult;
+
+export const parseSync = <A, B>(
+  schema: D.Decoder<A, B> | C.Codec<A, any, B>,
   data: any
-): Promise<ParseResult<B>> => {
-  return new Promise(resolve =>
-    pipe(
-      schema.decode(data),
-      fold(
-        errors =>
-          resolve({
-            success: false,
-            errors: pipe(
-              report(left(errors)),
-              ParseErrors.decode,
-              fold(
-                () => [],
-                s => s
-              )
-            ),
-          }),
-        data => resolve({ success: true, data })
-      )
+): ParseResult<B> =>
+  pipe(
+    schema.decode(data),
+    fold(
+      errors =>
+        ({
+          success: false,
+          errors: pipe(
+            report(left(errors)),
+            ParseErrors.decode,
+            fold(
+              () => [],
+              s => s
+            )
+          ),
+        } as ParseResult<B>),
+      data => ({ success: true, data })
     )
   );
-};
+
+export const parse = <A, B>(
+  schema: D.Decoder<A, B> | C.Codec<A, any, B>,
+  data: any
+): Promise<ParseResult<B>> => Promise.resolve(parseSync(schema, data));
 
 export const isPresent = <T extends any>(
   value: T | undefined | null
@@ -65,8 +73,8 @@ export type EnumLike = { [k: string]: string | number; [nu: number]: string };
 
 export function fromEnum<T extends EnumLike>(
   theEnum: T
-): D.Decoder<unknown, T> {
-  const isEnumValue = (input: unknown): input is T =>
+): D.Decoder<unknown, T[keyof T]> {
+  const isEnumValue = (input: unknown): input is any =>
     Object.values<unknown>(theEnum).includes(input);
 
   return pipe(D.union(D.string, D.number), D.refine(isEnumValue, 'enum'));

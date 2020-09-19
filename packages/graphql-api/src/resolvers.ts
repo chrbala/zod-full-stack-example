@@ -3,7 +3,7 @@ import {
   LivingThingArgs,
   AddLivingThingArgs,
   IDType,
-  id,
+  ID,
   BackendAnimal,
   BackendPlant,
   UpdateLivingThingArgs,
@@ -38,7 +38,7 @@ type LivingThingNodeType = (BackendAnimalType | BackendPlantType) & {
 };
 
 const resolveNode = async (
-  { table, id, serialized }: IDType,
+  { table, id: id, serialized }: IDType,
   context: Context
 ): Promise<LivingThingNodeType> =>
   table === Table.Animal
@@ -202,7 +202,7 @@ const updateLivingThing = ({ dryrun }: MutationOptions) => async (
       errors: prepareErrorsForTransit(res.errors),
     };
 
-  const { id, patch } = res.data.input;
+  const { id: id, patch } = res.data.input;
 
   const serverErrors = applyRootToErrors(
     ['input', 'patch'],
@@ -245,16 +245,16 @@ const deleteLivingThing = ({ dryrun }: MutationOptions) => async (
   _: any,
   args: unknown,
   context: Context
-): Promise<InputError | DeleteLivingThingPayload> => {
+) => {
   const res = await parse(DeleteLivingThingArgs, args);
 
   if (!res.success || dryrun)
     return {
       __typename: 'InputError',
       errors: !res.success ? prepareErrorsForTransit(res.errors) : [],
-    } as InputError;
+    };
 
-  const { id } = res.data.input;
+  const { id: id } = res.data.input;
 
   const table = id.table === Table.Animal ? context.animal : context.plant;
 
@@ -268,16 +268,7 @@ const deleteLivingThing = ({ dryrun }: MutationOptions) => async (
 
 export const resolvers = {
   Query: {
-    livingThing: async (
-      _: any,
-      args: unknown,
-      context: Context
-    ): Promise<
-      | InputError
-      | ({ __typename?: 'LivingThingPayload' } & {
-          node: BackendPlantType | BackendAnimalType;
-        })
-    > => {
+    livingThing: async (_: any, args: unknown, context: Context) => {
       const parsed = await parse(LivingThingArgs, args);
 
       if (!parsed.success)
@@ -313,6 +304,9 @@ export const resolvers = {
         ],
       };
     },
+    addLivingThingDryrun: addLivingThing({ dryrun: true }),
+    updateLivingThingDryrun: updateLivingThing({ dryrun: true }),
+    deleteLivingThingDryrun: deleteLivingThing({ dryrun: true }),
   },
   Mutation: {
     /*
@@ -323,13 +317,8 @@ export const resolvers = {
       the diet/eatenBy fields will not, and the call will succeed.
     */
     addLivingThing: addLivingThing({ dryrun: false }),
-    addLivingThingDryrun: addLivingThing({ dryrun: true }),
-
     updateLivingThing: updateLivingThing({ dryrun: false }),
-    updateLivingThingDryrun: updateLivingThing({ dryrun: true }),
-
     deleteLivingThing: deleteLivingThing({ dryrun: false }),
-    deleteLivingThingDryrun: deleteLivingThing({ dryrun: true }),
   },
   Node: resolveByTypename,
   AddLivingThingResult: resolveByTypename,
@@ -351,7 +340,7 @@ export const resolvers = {
       return (await context.diet.get(res.data.id.serialized)).eatenBy.map(
         id => ({
           __typename: 'Animal',
-          id,
+          id: id,
         })
       );
     },
@@ -368,7 +357,7 @@ export const resolvers = {
       return (await context.diet.get(res.data.id.serialized)).eatenBy.map(
         id => ({
           __typename: 'Animal',
-          id,
+          id: id,
         })
       );
     },
@@ -379,7 +368,7 @@ export const resolvers = {
 
       const { diet } = await context.diet.get(res.data.id.serialized);
       const parsedIds = diet.map(async el => {
-        const parsedId = await parse(id, el);
+        const parsedId = await parse(ID, el);
         return parsedId.success
           ? Promise.resolve(parsedId.data)
           : Promise.reject(parsedId.errors);

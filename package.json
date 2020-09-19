@@ -6,8 +6,16 @@
     "@graphql-codegen/typescript": "^1.16.3",
     "@graphql-codegen/typescript-operations": "^1.17.0",
     "@graphql-codegen/typescript-resolvers": "^1.17.0",
+    "@storybook/addon-actions": "^6.0.21",
+    "@storybook/addon-essentials": "^6.0.21",
+    "@storybook/addon-links": "^6.0.21",
+    "@storybook/node-logger": "^6.0.21",
+    "@storybook/preset-create-react-app": "^3.1.4",
+    "@storybook/react": "^6.0.21",
     "@types/react": "^16.9.43",
     "@types/react-dom": "^16.9.8",
+    "eslint": "^7.9.0",
+    "eslint-config-react-app": "5.2.1",
     "fp-ts": "^2.8.2",
     "graphql": "^14.0.0",
     "io-ts": "^2.2.10",
@@ -16,7 +24,11 @@
     "react": "^16.13.1",
     "react-dom": "^16.13.1",
     "tsdx": "^0.13.2",
-    "typescript": "^3.9.7"
+    "typescript": "^3.9.7",
+    "@babel/core": "^7.11.6",
+    "babel-loader": "^8.1.0",
+    "react-is": "^16.13.1",
+    "ts-loader": "^7.0.5"
   },
   "workspaces": [
     "packages/*"
@@ -30,9 +42,12 @@
     "prepublish": "lerna run prepublish",
     "clean": "git clean -fXd",
     "codegen": "graphql-codegen",
+    "codegen:watch": "graphql-codegen --watch",
     "postinstall": "npm run codegen",
     "lint": "tsdx lint packages",
     "format": "npm run lint --fix",
-    "validate": "npm test && npm run typecheck && npm run format"
+    "validate": "npm test && npm run typecheck && npm run format",
+    "storybook": "start-storybook -p 6006 -s public",
+    "build-storybook": "build-storybook -s public"
   }
 }

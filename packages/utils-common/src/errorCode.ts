@@ -1,4 +1,6 @@
 import * as D from 'io-ts/Decoder';
+import * as E from 'io-ts/Encoder';
+import * as C from 'io-ts/Codec';
 import { pipe } from 'fp-ts/function';
 
 const RICH_PREFIX = 'rich:';
@@ -71,6 +73,37 @@ export const makeError = ({
   code: string;
 }) => `${RICH_PREFIX}${serializeErrorValue({ code, params, debug, client })}`;
 
+const SerializedParams = D.array(
+  D.type({
+    key: D.string,
+    value: D.string,
+  })
+);
+const InputParams = pipe(
+  SerializedParams,
+  D.parse(entries =>
+    D.success(
+      entries.reduce(
+        (acc, { key, value }) => ({ ...acc, [key]: value }),
+        {} as D.TypeOf<typeof Params>
+      )
+    )
+  )
+);
+
+const InputParamsEncoder: E.Encoder<
+  D.TypeOf<typeof SerializedParams>,
+  D.TypeOf<typeof InputParams>
+> = {
+  encode: params =>
+    Object.entries(params).map(([key, value]) => ({
+      key,
+      value,
+    })),
+};
+
+export const ParamsCodec = C.make(InputParams, InputParamsEncoder);
+
 export const prepareErrorsForTransit = (errors: D.TypeOf<typeof ParseErrors>) =>
   errors
     .map(error => ({
@@ -79,10 +112,7 @@ export const prepareErrorsForTransit = (errors: D.TypeOf<typeof ParseErrors>) =>
         .filter(({ client }) => client)
         .map(e => ({
           ...e,
-          params: Object.entries(e.params).map(([key, value]) => ({
-            key,
-            value,
-          })),
+          params: ParamsCodec.encode(e.params),
         })),
     }))
     .filter(({ errors }) => errors.length);

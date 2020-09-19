@@ -10,7 +10,10 @@
   },
   "scripts": {
     "test": "tsdx test",
-    "lint": "tsdx lint"
+    "lint": "tsdx lint",
+    "schema:build": "node -r esm -r ts-node/register ./scripts/buildSchema.tsx",
+    "schema:watch": "nodemon --exec 'npm run build:schema' --ignore dist/",
+    "postinstall": "yarn run schema:build"
   },
   "main": "src/index.ts",
   "module": "src/index.ts",
@@ -24,9 +27,12 @@
     "react-dom": "^16.8.0"
   },
   "dependencies": {
+    "esm": "^3.2.25",
     "graphql-tag": "^2.10.4",
     "graphql-tools": "^6.0.14",
-    "tslib": "^2.0.0"
+    "nodemon": "^2.0.4",
+    "tslib": "^2.0.0",
+    "ts-node": "^8.10.2"
   },
   "devDependencies": {
     "esm": "^3.2.25",

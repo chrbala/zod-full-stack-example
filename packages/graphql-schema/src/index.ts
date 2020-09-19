@@ -102,6 +102,7 @@ export const typeDefs = gql`
     lifespan: Int
     lifecycle: PlantLifecycle
     weight: Float
+    eatenBy: [ID!]
   }
 
   input LivingThingPatchInput {
@@ -140,6 +141,10 @@ export const typeDefs = gql`
     node(id: ID!): Node
     livingThing(id: ID!): LivingThingResult!
     allLivingThings: AllLivingThingsResult!
+
+    addLivingThingDryrun(input: AddLivingThingInput!): InputError
+    updateLivingThingDryrun(input: UpdateLivingThingInput!): InputError
+    deleteLivingThingDryrun(input: DeleteLivingThingInput!): InputError
   }
 
   union AddLivingThingResult = AddLivingThingPayload | InputError
@@ -148,13 +153,8 @@ export const typeDefs = gql`
 
   type Mutation {
     addLivingThing(input: AddLivingThingInput!): AddLivingThingResult!
-    addLivingThingDryrun(input: AddLivingThingInput!): InputError
-
     updateLivingThing(input: UpdateLivingThingInput!): InputError!
-    updateLivingThingDryrun(input: UpdateLivingThingInput!): InputError
-
     deleteLivingThing(input: DeleteLivingThingInput!): DeleteLivingThingResult!
-    deleteLivingThingDryrun(input: DeleteLivingThingInput!): InputError
   }
 `;
 

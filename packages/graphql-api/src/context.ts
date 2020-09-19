@@ -4,10 +4,10 @@ import {
   BackendAnimal,
   BackendPlantPatchInput,
   BackendAnimalPatchInput,
+  ID,
 } from '@mono/validations-api';
 import { Decoder, TypeOf } from 'io-ts/Decoder';
 import { parse, NullablePartial, isPresent } from '@mono/utils-common';
-import { id as ID } from '@mono/validations-api';
 import { Graph } from 'graphlib';
 import { Table } from '@mono/utils-server';
 
@@ -15,7 +15,6 @@ import { Table } from '@mono/utils-server';
   This file is an approximation of a persisted data store like a database.
   Because this project primarily exists to illustrate and test validations,
   it does not go truly full stack here and the data store is ephemeral.
-  
   
   Additionally, data sources like these would typically be fronted by something
   like dataloader. This doesn't aid in the validation example though, so it's
@@ -47,20 +46,20 @@ const createTable = <T>(
     if (!value) return Promise.reject(new Error('not_found'));
 
     const res = await parse(schema, value);
-    return res.success ? res.data : Promise.reject('parse_error');
+    return res.success ? res.data : Promise.reject(new Error('parse_error'));
   };
 
   const update = async (id: number, value: unknown): Promise<T> => {
     const input = await parse(patch, value);
 
-    if (!input.success) return Promise.reject('not_found');
+    if (!input.success) return Promise.reject(new Error('not_found'));
 
     const persisted = await get(id);
     return (scope[id] = { ...persisted, ...input.data });
   };
 
   const deleteEl = async (id: number) => {
-    if (id >= scope.length) return Promise.reject('not_found');
+    if (id >= scope.length) return Promise.reject(new Error('not_found'));
 
     const deleted = !!scope[id];
     scope[id] = null;
@@ -130,7 +129,7 @@ const createDiet = (validate: (id: string) => Promise<boolean>) => {
 
   const init = async (id: string) => {
     if (!(await idsAreValid([id], validate)))
-      return Promise.reject('not_found');
+      return Promise.reject(new Error('not_found'));
 
     if (!database.diets.hasNode(id)) database.diets.setNode(id);
 
@@ -143,7 +142,7 @@ const createDiet = (validate: (id: string) => Promise<boolean>) => {
     const allIds = [...diets.diet, ...diets.eatenBy];
 
     if (!(await idsAreValid(allIds, validate)))
-      return Promise.reject('invalid_id');
+      return Promise.reject(new Error('invalid_id'));
 
     diets.diet.forEach(outEdge => database.diets.setEdge(id, outEdge));
     diets.eatenBy.forEach(inEdge => database.diets.setEdge(inEdge, id));
@@ -160,7 +159,7 @@ const createDiet = (validate: (id: string) => Promise<boolean>) => {
     const allIds = [...(diets.diet ?? []), ...(diets.eatenBy ?? [])];
 
     if (!(await idsAreValid(allIds, validate)))
-      return Promise.reject('not_found');
+      return Promise.reject(new Error('not_found'));
 
     const inEdges = database.diets.inEdges(id);
     if (inEdges && diets.eatenBy)

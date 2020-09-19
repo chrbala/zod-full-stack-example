@@ -11,7 +11,7 @@ import {
   eatenBy,
 } from '@mono/validations-common';
 
-export const id = pipe(
+export const ID = pipe(
   D.string,
   D.parse(id => {
     const res = fromGlobalId(id);
@@ -19,7 +19,7 @@ export const id = pipe(
       ? D.failure(
           res,
           makeError({
-            code: 'invalid_id',
+            code: 'invalidid',
             client: true,
             debug: {
               type: res.name,
@@ -31,22 +31,22 @@ export const id = pipe(
   })
 );
 
-export type IDType = D.TypeOf<typeof id>;
+export type IDType = D.TypeOf<typeof ID>;
 
-const foreignKey = D.parse<D.TypeOf<typeof id>, string>(id =>
+const foreignKey = D.parse<D.TypeOf<typeof ID>, string>(id =>
   D.success(toGlobalId(id))
 );
 
 const typedId = (...table: Array<Table>) =>
   pipe(
-    id,
+    ID,
     D.parse(id =>
       table.includes(id.table)
         ? D.success(id)
         : D.failure(
             id,
             makeError({
-              code: 'invalid_id',
+              code: 'invalidid',
               client: true,
             })
           )
@@ -77,7 +77,7 @@ const AnimalInput = pipe(
 
 export const BackendAnimal = LivingThingCommon;
 
-const PlantInput = pipe(
+export const PlantInput = pipe(
   LivingThingCommon,
   D.intersect(D.type({ eatenBy: EatenBy, lifecycle }))
 );
@@ -88,9 +88,9 @@ export const BackendPlant = pipe(
 );
 
 export const LivingThingPatchCommon = nullablePartial({
-  name: name,
-  lifespan: lifespan,
-  weight: weight,
+  name,
+  lifespan,
+  weight,
 });
 
 export const AnimalPatchInput = pipe(
@@ -109,7 +109,7 @@ export const PlantPatchInput = pipe(
   LivingThingPatchCommon,
   D.intersect(
     nullablePartial({
-      lifecycle: lifecycle,
+      lifecycle,
       eatenBy: EatenBy,
     })
   )
@@ -117,7 +117,7 @@ export const PlantPatchInput = pipe(
 
 export const BackendPlantPatchInput = pipe(
   LivingThingPatchCommon,
-  D.intersect(D.type({ lifecycle: lifecycle, eatenBy: EatenBy }))
+  D.intersect(D.type({ lifecycle, eatenBy: EatenBy }))
 );
 
 export const LivingThingPatchInput = pipe(
@@ -164,7 +164,7 @@ export const DeleteLivingThingArgs = D.type({
 });
 
 export const NodeArgs = D.type({
-  id,
+  id: ID,
 });
 
 export const AllLivingThingsInput = D.type({

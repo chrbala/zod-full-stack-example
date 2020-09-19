@@ -1,0 +1,1 @@
+export { PlantEntry } from './PlantEntry';

@@ -1,10 +1,10 @@
 import * as D from 'io-ts/Decoder';
-import { id } from '@mono/validations-api';
+import { ID } from '@mono/validations-api';
 
 export const animalParent = D.type({
-  id,
+  id: ID,
 });
 
 export const plantParent = D.type({
-  id,
+  id: ID,
 });
